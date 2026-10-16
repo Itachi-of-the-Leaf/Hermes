@@ -1,0 +1,6 @@
+id,title,owner,status,deadline,depends_on,aliases,est_minutes
+T1,Design the slides,aanya,Complete,2026-10-17,,slides|deck|ppt,120
+T2,Connect the payment API,kabir,Pending,2026-10-17,T3,payment api|payment|api|integration|razorpay,120
+T3,Get sandbox test credentials,priya,In Progress,2026-10-17,,credentials|creds|sandbox|test keys,45
+T4,Build the checkout page,meera,In Progress,2026-10-17,T2,checkout|checkout page,180
+T5,Record the demo video,aanya,Pending,2026-10-18,T4,video|demo video|recording,90
