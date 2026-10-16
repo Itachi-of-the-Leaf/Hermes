@@ -1,0 +1,48 @@
+# Slack app manifest. api.slack.com/apps -> Create New App -> From a manifest -> paste this.
+# Replace YOUR_DOMAIN with your public URL (terraform output webhook_urls.slack_events).
+# Local development: set socket_mode_enabled: true, create an app-level token with
+# connections:write (SLACK_APP_TOKEN=xapp-...), and you can drop the request URLs.
+display_information:
+  name: Project Coordinator
+  description: Follows up on project tasks, records blockers and posts meeting summaries.
+  background_color: "#37352f"
+features:
+  app_home:
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+  bot_user:
+    display_name: Project Coordinator
+    always_online: true
+  slash_commands:
+    - command: /coordinator
+      url: https://YOUR_DOMAIN/api/slack/events
+      description: Project status, add a task, or send check-ins (lead)
+      usage_hint: status | checkin | task <title> @name due friday est 2h after T1
+      should_escape: false
+oauth_config:
+  scopes:
+    bot:
+      - chat:write          # DMs, confirmations, meeting summaries
+      - im:history          # read replies in DMs
+      - im:read
+      - im:write            # open DMs with team members
+      - channels:history    # watch the project channel for belief conflicts
+      - channels:read       # look channels up by name (SLACK_*_CHANNEL=#proj-...)
+      - groups:read         # same, for private channels
+      - groups:history      # same, for private channels
+      - users:read
+      - users:read.email    # link Slack users to the roster by email
+      - commands
+settings:
+  event_subscriptions:
+    request_url: https://YOUR_DOMAIN/api/slack/events
+    bot_events:
+      - message.im
+      - message.channels
+      - message.groups
+  interactivity:
+    is_enabled: true
+    request_url: https://YOUR_DOMAIN/api/slack/events
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
