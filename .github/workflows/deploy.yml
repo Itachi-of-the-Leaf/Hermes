@@ -1,0 +1,58 @@
+name: Deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency: { group: deploy-prod, cancel-in-progress: false }   # never two deploys at once
+
+permissions:
+  id-token: write      # OIDC: short-lived AWS credentials, no stored keys
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+  CLUSTER: ${{ vars.ECS_CLUSTER || 'coordinator-prod' }}
+  TAG: ${{ github.sha }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production     # add required reviewers in GitHub to gate prod deploys
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API image (arm64 for Graviton)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.CLUSTER }}-api:${{ env.TAG }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.CLUSTER }}-web:${{ env.TAG }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Migrate the database, then roll out api, worker and web
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          PRIVATE_SUBNETS: ${{ vars.PRIVATE_SUBNETS }}
+          APP_SG: ${{ vars.APP_SG }}
+        run: deploy/scripts/deploy.sh
