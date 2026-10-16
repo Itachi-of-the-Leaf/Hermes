@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.db
+.env
+node_modules/
+dist/
+.pytest_cache/
+.ruff_cache/
+.terraform/
+*.tfstate*
+*.tfvars
+secrets.json
+*.log
+dashboard-tasks.png
