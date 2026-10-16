@@ -1,0 +1,37 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "{{TEAMS_CLIENT_ID}}",
+  "developer": {
+    "name": "Your team",
+    "websiteUrl": "https://YOUR_DOMAIN",
+    "privacyUrl": "https://YOUR_DOMAIN",
+    "termsOfUseUrl": "https://YOUR_DOMAIN"
+  },
+  "name": { "short": "Project Coordinator", "full": "AI Group Project Coordinator" },
+  "description": {
+    "short": "Follows up on tasks and records blockers.",
+    "full": "Checks in with each task owner, understands their replies, records blockers, asks whoever can unblock them, and keeps the project board accurate."
+  },
+  "icons": { "color": "color.png", "outline": "outline.png" },
+  "accentColor": "#37352F",
+  "bots": [
+    {
+      "botId": "{{TEAMS_CLIENT_ID}}",
+      "scopes": ["personal", "team", "groupChat"],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": ["personal"],
+          "commands": [
+            { "title": "status", "description": "Show where the project stands" }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["YOUR_DOMAIN"]
+}
