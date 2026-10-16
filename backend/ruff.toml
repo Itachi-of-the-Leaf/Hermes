@@ -1,0 +1,4 @@
+line-length = 120
+[lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501", "E731"]   # long lines are wrapped by hand; short lambdas are fine for formatting helpers
