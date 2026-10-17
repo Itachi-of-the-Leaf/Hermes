@@ -3,6 +3,7 @@ import type { AgentActionRow, Forecast, GraphData, RiskEvent, Status } from '../
 import { api } from '../api'
 import { Callout, Empty, fmtTime, PageHeader, plain, StatusTag, Tag } from '../ui'
 import { humanMinutes, layers } from './forecastUtil'
+import { Timeline } from '../components/Timeline'
 
 const SEVERITY_COLOR = { HIGH: 'red', MEDIUM: 'orange', LOW: 'gray' } as const
 const CONFIDENCE_COLOR = { HIGH: 'green', MEDIUM: 'yellow', LOW: 'red' } as const
@@ -28,7 +29,7 @@ function DependencyGraph({ graph }: { graph: GraphData }) {
   const height = 16 + rows * H + (rows - 1) * GY
   return (
     <div className="table-wrap" role="img" aria-label="Task dependency graph">
-      <svg width={width} height={height} style={{ display: 'block' }}>
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" style={{ display: 'block', maxWidth: width, height: 'auto' }}>
         <defs>
           <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
             <path d="M0,0 L8,4 L0,8 z" fill="currentColor" opacity="0.5" />
@@ -59,7 +60,7 @@ function DependencyGraph({ graph }: { graph: GraphData }) {
 
 function Risk({ r }: { r: RiskEvent }) {
   return (
-    <li className="block">
+    <li className="risk">
       <div className="change-line">
         <Tag color={SEVERITY_COLOR[r.severity]}>{r.severity}</Tag>
         <b>{r.risk_type.replace(/_/g, ' ').toLowerCase()}</b>
@@ -137,18 +138,24 @@ export function ForecastPage({ tick }: { tick: number }) {
             )}
           </div>
 
-          {f.risks.length > 0 && (
-            <div className="block"><div className="block-title">Risks</div>
-              <ul className="history">{f.risks.map((r, i) => <Risk key={i} r={r} />)}</ul>
-            </div>
-          )}
+          <div className="grid-2">
+            {f.risks.length > 0 && (
+              <div className="block"><div className="block-title">Risks</div>
+                <ul className="history">{f.risks.map((r, i) => <Risk key={i} r={r} />)}</ul>
+              </div>
+            )}
 
-          {graph && graph.nodes.length > 0 && (
-            <div className="block"><div className="block-title">Dependency graph</div>
-              <p className="small muted">Arrows point from a prerequisite to the task that waits for it. Red outline: blocked. Orange: forecast to miss its deadline. Blue: on the critical path.</p>
-              <DependencyGraph graph={graph} />
-            </div>
-          )}
+            {graph && graph.nodes.length > 0 && (
+              <div className="block"><div className="block-title">Dependency graph</div>
+                <p className="small muted">Arrows point from a prerequisite to the task that waits for it. Red outline: blocked. Orange: forecast to miss its deadline. Blue: on the critical path.</p>
+                <DependencyGraph graph={graph} />
+              </div>
+            )}
+          </div>
+
+          <div className="block"><div className="block-title">Timeline</div>
+            <Timeline tasks={f.tasks} />
+          </div>
 
           <div className="block"><div className="block-title">Schedule</div>
             <div className="table-wrap">

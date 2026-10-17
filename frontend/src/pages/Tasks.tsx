@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Board, Task, TimelineItem } from '../api'
 import { api, STATUSES } from '../api'
+import { LayoutGroup, motion } from 'motion/react'
+import { AgentPipeline } from '../components/AgentPipeline'
 import CountUp from '../components/reactbits/CountUp'
 import { Callout, Empty, EngineTag, fmtDate, fmtTime, PageHeader, Person, plain, StatusTag, STATUS_COLOR, Tag } from '../ui'
 
@@ -37,6 +39,8 @@ export function TasksPage({ board, tick }: { board: Board; tick: number }) {
             }}>Link dependencies</button>
         </div>
       </PageHeader>
+      <Stats board={board} />
+      <AgentPipeline tasks={board.tasks} />
       {created && <Callout icon="✅" color="green">{created}</Callout>}
       {adding && <NewTaskForm board={board} onDone={(msg) => { setAdding(false); setCreated(msg) }} />}
       {blocked.length > 0 && (
@@ -67,6 +71,29 @@ export function TasksPage({ board, tick }: { board: Board; tick: number }) {
       ) : view === 'board' ? <BoardView board={board} onOpen={setOpenId} /> : <TableView board={board} onOpen={setOpenId} />}
       {open && <SidePeek task={open} board={board} tick={tick} onClose={() => setOpenId(null)} />}
     </>
+  )
+}
+
+function Stats({ board }: { board: Board }) {
+  const n = (s: string) => board.tasks.filter((t) => t.status === s).length
+  const total = board.tasks.length
+  const atRisk = board.tasks.filter((t) => t.at_risk && t.status !== 'Complete').length
+  const items: [string, number, string, string?][] = [
+    ['Total tasks', total, 'ink'],
+    ['In progress', n('In Progress'), 'blue'],
+    ['Blocked', n('Blocked'), 'red'],
+    ['At risk', atRisk, 'orange'],
+    ['Complete', total ? Math.round((n('Complete') / total) * 100) : 0, 'green', '%'],
+  ]
+  return (
+    <section className="stats" aria-label="Project summary">
+      {items.map(([label, value, tone, suffix]) => (
+        <div key={label} className={`stat tone-${tone}`}>
+          <span className="stat-label">{label}</span>
+          <span className="stat-value"><CountUp to={value} duration={0.9} trigger="load" suffix={suffix} /></span>
+        </div>
+      ))}
+    </section>
   )
 }
 
@@ -130,6 +157,7 @@ function NewTaskForm({ board, onDone }: { board: Board; onDone: (msg: string) =>
 
 function BoardView({ board, onOpen }: { board: Board; onOpen: (id: string) => void }) {
   return (
+    <LayoutGroup>
     <div className="board">
       {STATUSES.map((st) => {
         const tasks = board.tasks.filter((t) => t.status === st)
@@ -144,6 +172,7 @@ function BoardView({ board, onOpen }: { board: Board; onOpen: (id: string) => vo
         )
       })}
     </div>
+    </LayoutGroup>
   )
 }
 
@@ -158,7 +187,9 @@ function Card({ t, onOpen }: { t: Task; onOpen: () => void }) {
   }, [lastId])
 
   return (
-    <button className={`card ${flash ? 'flash' : ''}`} onClick={onOpen}>
+    // layoutId: when a reply changes the status, the card glides from its old column into the new one
+    <motion.button className={`card ${flash ? 'flash' : ''}`} onClick={onOpen} layout layoutId={`card-${t.id}`}
+      whileHover={{ y: -2 }} whileTap={{ scale: 0.99 }} transition={{ type: 'spring', stiffness: 380, damping: 34 }}>
       <span className="card-title">{t.title}</span>
       <span className="card-props">
         <Person name={t.owner} size={18} />
@@ -179,7 +210,7 @@ function Card({ t, onOpen }: { t: Task; onOpen: () => void }) {
           <span>“{t.last_event.evidence}”</span>
         </span>
       )}
-    </button>
+    </motion.button>
   )
 }
 
