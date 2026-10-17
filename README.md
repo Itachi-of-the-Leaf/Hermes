@@ -792,6 +792,18 @@ push to main
 
 The API and web roll with zero downtime. The worker stops and then starts, so two Telegram pollers never overlap. Full guide: [docs/DEPLOY_AWS.md](docs/DEPLOY_AWS.md).
 
+### Render (backend, single instance)
+
+`render.yaml` is a Render Blueprint for the backend: one Docker web service that runs the API and the worker loops in one process (`ROLE=all`) and applies migrations on start (`MIGRATE_ON_START=true`). Create the service from the Blueprint, or set these in an existing service under **Settings → Build & Deploy**:
+
+| Setting | Value |
+| --- | --- |
+| Dockerfile Path | `./backend/Dockerfile` |
+| Docker Build Context Directory | `./backend` |
+| Health Check Path | `/api/health` |
+
+Then add the environment variables. `DATABASE_URL` should point at a Postgres (Render or Neon; their `postgres://` URLs work as-is), because SQLite on Render is wiped on every deploy and restart. Set `FRONTEND_ORIGIN` to the Vercel URL, `PUBLIC_BASE_URL` to the Render URL, and add the integration keys you use. On the free plan the service sleeps when idle. While it sleeps, Telegram polling, scheduled check-ins and reminders pause, and the first request takes about 50 seconds.
+
 ### Vercel (frontend only)
 
 Set the root directory to `frontend`, the build command to `npm run build` and the output directory to `dist`. The landing page is fully static. The dashboard calls `/api/...`, so add a rewrite from `/api/(.*)` to the backend's public URL and set `FRONTEND_ORIGIN` on the backend to the Vercel domain.

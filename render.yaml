@@ -1,0 +1,47 @@
+# Render Blueprint: the backend as one Docker web service (API + worker loops in one process).
+# Values marked sync: false are entered in the Render dashboard; secrets never live in this file.
+services:
+  - type: web
+    name: saarathi-backend
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: ROLE
+        value: all
+      - key: APP_ENV
+        value: prod
+      - key: MIGRATE_ON_START
+        value: "true"
+      - key: DATABASE_URL           # Postgres from Render or Neon; without it, SQLite is wiped on every deploy
+        sync: false
+      - key: FRONTEND_ORIGIN        # the Vercel URL, for CORS
+        sync: false
+      - key: PUBLIC_BASE_URL        # this service's URL, used in webhook links
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+      - key: RECALL_API_KEY
+        sync: false
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USER
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
