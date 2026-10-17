@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Saarathi", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin, "http://localhost:5173"],
+app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
                    allow_methods=["*"], allow_headers=["*"])
 setup_tracing(app, engine)
 app.include_router(meetings_router)

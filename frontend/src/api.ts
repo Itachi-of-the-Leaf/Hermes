@@ -258,9 +258,13 @@ export interface AgentActionRow {
   severity: string | null
 }
 
+// Where the backend lives. Empty in development (Vite proxies /api to localhost:8000); the production build
+// points at the hosted API (frontend/.env.production), which allows this site's origin through CORS.
+export const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const isForm = init?.body instanceof FormData
-  const r = await fetch(`/api${path}`, {
+  const r = await fetch(`${API_BASE}/api${path}`, {
     ...init,
     headers: isForm ? init?.headers : { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   })
@@ -338,7 +342,7 @@ export function useLiveData() {
   useEffect(() => {
     refresh()
     api.health().then(setHealth).catch(() => setHealth(null))
-    const es = new EventSource('/api/stream')
+    const es = new EventSource(`${API_BASE}/api/stream`)
     es.onopen = () => setLive(true)
     es.onerror = () => setLive(false)
     es.onmessage = () => {

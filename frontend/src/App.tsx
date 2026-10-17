@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Board, Health } from './api'
-import { api, useLiveData, useRoute } from './api'
+import { api, API_BASE, useLiveData, useRoute } from './api'
 import { ForecastPage } from './pages/Forecast'
 import { NetworkPage } from './pages/Network'
 import { presetsFor } from './devPresets'
@@ -36,7 +36,9 @@ export default function App() {
 
   let body
   if (!board) {
-    body = <Empty>Connecting to Saarathi on localhost:8000… Start it with <code>uvicorn app.main:app --reload</code>.</Empty>
+    body = API_BASE
+      ? <Empty>Connecting to Saarathi… If the server was asleep it can take up to a minute to wake up.</Empty>
+      : <Empty>Connecting to Saarathi on localhost:8000… Start it with <code>uvicorn app.main:app --reload</code>.</Empty>
   } else if (page === 'meetings' && route[1]) {
     body = <MeetingDoc id={Number(route[1])} tick={tick} go={go} />
   } else if (page === 'meetings') {

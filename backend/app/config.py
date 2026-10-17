@@ -23,6 +23,9 @@ def _b(name: str, default: bool = False) -> bool:
     return _s(name, str(default)).lower() in ("1", "true", "yes", "on")
 
 
+PRODUCTION_ORIGINS = ("https://www.saarathi.tech", "https://saarathi.tech")
+
+
 class Settings:
     # ---- runtime
     env: str = _s("APP_ENV", "dev")                     # dev | prod
@@ -106,6 +109,7 @@ class Settings:
     database_url: str = _s("DATABASE_URL", f"sqlite:///{BASE_DIR / 'coordinator.db'}")
     redis_url: str = _s("REDIS_URL")                    # enables cross-instance SSE + job queue
     auto_create_tables: bool = _b("AUTO_CREATE_TABLES", True)   # prod: False, run Alembic instead
+    # comma-separated; the dashboard calls the API from these sites (CORS). The production site is always allowed.
     frontend_origin: str = _s("FRONTEND_ORIGIN", "http://localhost:5173")
     data_dir: Path = Path(_s("DATA_DIR")) if _s("DATA_DIR") else BASE_DIR / "data"   # team.csv + tasks.csv
     log_json: bool = _b("LOG_JSON", False)
@@ -124,6 +128,11 @@ class Settings:
         for prefix in ("postgres://", "postgresql://"):
             if self.database_url.startswith(prefix):
                 self.database_url = "postgresql+psycopg://" + self.database_url[len(prefix):]
+
+    @property
+    def cors_origins(self) -> list[str]:
+        listed = [o.strip().rstrip("/") for o in self.frontend_origin.split(",") if o.strip()]
+        return list(dict.fromkeys([*listed, *PRODUCTION_ORIGINS, "http://localhost:5173"]))
 
     @property
     def jev_enabled(self) -> bool:
