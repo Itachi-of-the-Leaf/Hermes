@@ -134,7 +134,7 @@ flowchart LR
 
   subgraph External["External services"]
     JEV["Jev via OpenRouter<br/>typed decisions"]
-    LLM["LLM via OpenRouter<br/>cohere/north-mini-code:free"]
+    LLM["LLM via OpenRouter<br/>qwen/qwen3.6-35b-a3b"]
     RECALL["Recall.ai<br/>meeting bot"]
     NEO["Neo4j Aura<br/>graph mirror"]
   end
@@ -625,7 +625,7 @@ In Neo4j the same data becomes `(:Project)-[:HAS_TASK]->(:Task)`, `(:Person)-[:O
 | Data | SQLModel / SQLAlchemy, Alembic migrations, SQLite (dev) or Postgres 16 (prod) |
 | Messaging | Redis pub/sub and job queue (fakeredis in tests) |
 | Channels | python-telegram-bot, Slack Bolt (Socket Mode or HTTP), Microsoft Teams SDK |
-| Understanding | Rules, **Jev** typed decisions via OpenRouter, LLM via an OpenAI-compatible API (OpenRouter `cohere/north-mini-code:free`) |
+| Understanding | Rules, **Jev** typed decisions via OpenRouter, LLM via an OpenAI-compatible API (OpenRouter `qwen/qwen3.6-35b-a3b`) |
 | Planning | Google OR-Tools **CP-SAT** |
 | Graph | Neo4j (Aura), read-only mirror |
 | Meetings | Recall.ai, or WebVTT upload |
