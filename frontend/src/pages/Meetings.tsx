@@ -7,6 +7,7 @@ const STATUS_TAG: Record<Meeting['status'], [string, string]> = {
   created: ['gray', 'Created'],
   joining: ['yellow', 'Joining call'],
   in_call: ['blue', 'Listening'],
+  ending: ['purple', 'Wrapping up'],
   processing: ['purple', 'Summarising'],
   done: ['green', 'Summary ready'],
   failed: ['red', 'Failed'],
@@ -146,7 +147,14 @@ export function MeetingDoc({ id, tick, go }: { id: number; tick: number; go: (p:
           <div><button className="btn-secondary small" onClick={() => api.finishMeeting(m.id)}>End and summarise now</button></div>
         </Callout>
       )}
+      {m.status === 'ending' && <Callout icon="⏳" color="purple">The agent has left the call. Waiting for the full transcript, then writing the summary…</Callout>}
       {m.status === 'processing' && <Callout icon="⏳" color="purple">Writing the summary…</Callout>}
+      {m.status === 'done' && m.provider === 'recall' && m.stats.utterances === 0 && (
+        <Callout icon="🔁" color="yellow">
+          No lines reached the summary. The recording may still have the conversation.
+          <div><button className="btn-secondary small" onClick={() => api.finishMeeting(m.id)}>Fetch the transcript again</button></div>
+        </Callout>
+      )}
       {m.status === 'failed' && <Callout icon="⚠️" color="red">{m.error}</Callout>}
 
       {s && (<>

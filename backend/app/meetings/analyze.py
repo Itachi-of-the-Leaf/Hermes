@@ -335,6 +335,10 @@ async def analyze(meeting_id: int) -> None:
         bus.publish("board")
 
 
+LIVE = ("joining", "in_call", "ending")      # ending: the bot was told to leave; summarise once the transcript is in
+TRANSCRIPT_WAIT = timedelta(minutes=10)     # how long after the call to keep waiting for Recall's final transcript
+
+
 @jobs.handler("meeting.poll_recall")
 async def poll_recall() -> None:
     """Worker safety net: finish meetings whose bot left the call, even if no webhook arrived."""
@@ -344,8 +348,7 @@ async def poll_recall() -> None:
         return
     rc = RecallClient()
     with Session(engine) as s:
-        live = s.exec(select(Meeting).where(Meeting.provider == "recall",
-                                            Meeting.status.in_(["joining", "in_call"]))).all()
+        live = s.exec(select(Meeting).where(Meeting.provider == "recall", Meeting.status.in_(LIVE))).all()
         for m in live:
             try:
                 bot = await rc.get_bot(m.provider_bot_id)
@@ -353,12 +356,23 @@ async def poll_recall() -> None:
                 log.warning("recall poll %s: %s", m.id, e)
                 continue
             code = rc.status_of(bot)
-            if code in ("in_call_recording", "in_call_not_recording") and m.status != "in_call":
+            if code in ("in_call_recording", "in_call_not_recording") and m.status == "joining":
                 m.status = "in_call"
-            elif code in ("call_ended", "done", "fatal"):
+            elif code in ("call_ended", "recording_done", "done", "fatal"):
                 have = s.exec(select(Utterance).where(Utterance.meeting_id == m.id)).first()
-                if not have:                                  # webhooks missed: pull the final transcript
-                    add_lines(s, m, await rc.transcript(bot))
+                if not have:
+                    # Webhooks missed: pull the final transcript. Recall publishes it only once the bot is done,
+                    # so summarising at call_ended (or right after "End and summarise") produced an empty meeting.
+                    lines = await rc.transcript(bot) if code in ("done", "fatal") else []
+                    ended = rc.ended_at(bot)
+                    if not lines and code != "fatal" and ended and now() - ended < TRANSCRIPT_WAIT:
+                        if m.status != "ending":
+                            m.status = "ending"
+                            s.add(m)
+                            s.commit()
+                            bus.publish("meeting", meeting_id=m.id)
+                        continue
+                    add_lines(s, m, lines)
                 m.ended_at = now()
                 s.add(m)
                 s.commit()

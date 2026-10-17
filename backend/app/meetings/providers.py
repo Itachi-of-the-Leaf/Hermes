@@ -8,6 +8,7 @@
 """
 import re
 from dataclasses import dataclass
+from datetime import datetime
 
 import httpx
 
@@ -69,6 +70,14 @@ class RecallClient:
     def status_of(bot: dict) -> str:
         changes = bot.get("status_changes") or []
         return changes[-1].get("code", "unknown") if changes else "unknown"
+
+    @staticmethod
+    def ended_at(bot: dict) -> datetime | None:
+        """When the bot left the call, from its status history (None while it is still in the call)."""
+        for change in bot.get("status_changes") or []:
+            if change.get("code") == "call_ended" and change.get("created_at"):
+                return datetime.fromisoformat(change["created_at"].replace("Z", "+00:00"))
+        return None
 
     async def transcript(self, bot: dict) -> list[Line]:
         """Final transcript after the call (fallback if real-time webhooks were missed)."""

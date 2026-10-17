@@ -125,7 +125,7 @@ class Meeting(SQLModel, table=True):
     meeting_url: Optional[str] = None
     provider: str = "upload"                            # recall | upload
     provider_bot_id: Optional[str] = Field(default=None, index=True)
-    status: str = "created"                             # created | joining | in_call | processing | done | failed
+    status: str = "created"                             # created | joining | in_call | ending | processing | done | failed
     error: Optional[str] = None
     summary: Optional[str] = None                       # JSON (headline, decisions, action items, blockers, risks)
     stats: str = "{}"                                   # JSON (utterances, flagged, engine, cost)
