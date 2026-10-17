@@ -33,7 +33,8 @@ class Settings:
     # worker = Telegram polling, scheduler, background jobs; exactly 1
     # all    = both in one process (local development)
     role: str = _s("ROLE", "all")
-    public_base_url: str = _s("PUBLIC_BASE_URL", "http://localhost:8000")
+    # Recall and Slack call back here. Render sets RENDER_EXTERNAL_URL, so a deployed backend defaults to itself.
+    public_base_url: str = _s("PUBLIC_BASE_URL", os.getenv("RENDER_EXTERNAL_URL") or "http://localhost:8000")
 
     # ---- Telegram
     telegram_token: str = _s("TELEGRAM_BOT_TOKEN")

@@ -1,6 +1,7 @@
 """Start/stop shared by the API process (main.py) and the worker process (worker.py)."""
 import asyncio
 import logging
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -68,6 +69,10 @@ async def start(fastapi_app=None) -> None:
         if settings.redis_url:
             _tasks.append(asyncio.create_task(jobs.consume_forever()))
     log.info("runtime started: role=%s channels=%s", settings.role, channels.status())
+    own_url = os.getenv("RENDER_EXTERNAL_URL")
+    if own_url and settings.public_base_url.rstrip("/") != own_url.rstrip("/"):
+        log.warning("PUBLIC_BASE_URL is %s but this service is %s: meeting transcripts and Slack events will go "
+                    "to the other server", settings.public_base_url, own_url)
 
 
 async def stop() -> None:

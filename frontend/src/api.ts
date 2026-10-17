@@ -150,7 +150,7 @@ export interface Meeting {
   title: string
   meeting_url: string | null
   provider: 'recall' | 'upload'
-  status: 'created' | 'joining' | 'in_call' | 'processing' | 'done' | 'failed'
+  status: 'created' | 'joining' | 'in_call' | 'ending' | 'processing' | 'done' | 'failed'
   error: string | null
   summary: MeetingSummary | null
   stats: { utterances?: number; flagged?: number; triage_engine?: string; summary_engine?: string; reviews?: number; reduction?: number }
