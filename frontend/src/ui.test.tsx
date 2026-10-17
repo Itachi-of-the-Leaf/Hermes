@@ -45,7 +45,7 @@ describe('EngineTag', () => {
   })
   it('meeting-sourced engines get the mic marker', () => {
     render(<EngineTag engine="meeting/jev" />)
-    expect(screen.getByText(/🎙️/)).toBeInTheDocument()
+    expect(screen.getByText(/Meeting/)).toBeInTheDocument()
   })
   it('unknown engines fall back to their own name', () => {
     render(<EngineTag engine="mystery" />)

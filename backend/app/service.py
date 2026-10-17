@@ -121,7 +121,7 @@ def next_task_id(s: Session) -> str:
 
 
 def create_task(s: Session, *, title: str, owner_id: int, deadline: str | None = None, est_minutes: int | None = None,
-                depends_on: list[str] | tuple = ()) -> Task:
+                depends_on: list[str] | tuple = (), requested_by_id: int | None = None) -> Task:
     """The one way a task comes into being (dashboard, Telegram, Slack). Raises ValueError on bad input."""
     title = " ".join((title or "").split())
     if len(title) < 3:
@@ -140,7 +140,7 @@ def create_task(s: Session, *, title: str, owner_id: int, deadline: str | None =
     if est_minutes is not None and est_minutes <= 0:
         raise ValueError("the estimate must be positive")
     t = Task(id=next_task_id(s), title=title, owner_id=owner_id, status="Pending", deadline=deadline or None,
-             depends_on=",".join(deps), aliases=title.lower(), est_minutes=est_minutes)
+             depends_on=",".join(deps), aliases=title.lower(), est_minutes=est_minutes, requested_by_id=requested_by_id)
     s.add(t)
     s.commit()
     s.refresh(t)
@@ -238,7 +238,8 @@ def handle_task_command(s: Session, member: Member, text: str, today: date | Non
         return ("⚠️ I did not create that task:\n" + "\n".join(f"• {escape(e)}" for e in p.errors) + "\n\n" + escape(TASK_HELP)), []
     owner = next((m for m in people if m.key == p.owner_key), member)
     try:
-        t = create_task(s, title=p.title, owner_id=owner.id, deadline=p.due, est_minutes=p.est_minutes, depends_on=p.depends_on)
+        t = create_task(s, title=p.title, owner_id=owner.id, deadline=p.due, est_minutes=p.est_minutes, depends_on=p.depends_on,
+                        requested_by_id=member.id)
     except ValueError as e:
         return f"⚠️ I did not create that task: {escape(str(e))}", []
     titles = {x.id: x.title for x in tasks}
@@ -759,7 +760,9 @@ def activity(s: Session, limit: int = 40) -> list[dict]:
     items = [{"type": "event", "at": e.at, "task": titles.get(e.task_id), "task_id": e.task_id,
               "text": f"{e.old_status} → {e.new_status}: {e.reason}", "engine": e.engine,
               "confidence": e.confidence, "actor": e.actor, "reverted": e.reverted} for e in evs]
-    items += [{"type": "message", "at": m.at, "task": titles.get(m.task_id), "task_id": m.task_id, "text": m.text,
+    def names(text: str) -> str:                                       # {M3} mention tokens read as @Samarth on the dashboard
+        return re.sub(r"\{M(\d+)\}", lambda x: f"@{mb[int(x.group(1))].name}" if int(x.group(1)) in mb else "@someone", text or "")
+    items += [{"type": "message", "at": m.at, "task": titles.get(m.task_id), "task_id": m.task_id, "text": names(m.text),
                "direction": m.direction, "kind": m.kind, "who": mb[m.member_id].name if m.member_id else "bot"}
               for m in msgs]
     items.sort(key=lambda x: x["at"], reverse=True)

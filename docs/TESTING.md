@@ -14,7 +14,7 @@ It checks Slack (token, scopes, public URL, **whether Slack itself has ever sent
 
 ## 2. The walkthrough (about 10 minutes, same steps in Slack and in Telegram)
 
-Open the dashboard (http://localhost:5173) next to your chat app. Press **Reset** first.
+Open the dashboard (http://localhost:5173/dashboard/) next to your chat app. Press **Reset** first.
 
 | # | Do this | You should see |
 | --- | --- | --- |

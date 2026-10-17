@@ -1,42 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { Activity, ChannelName, Health, Review, Status, TeamMember } from '../api'
+import type { Activity, ChannelName, Health, TeamMember } from '../api'
 import { api } from '../api'
-import { Callout, CHANNEL_ICON, CHANNEL_LABEL, EngineTag, Empty, fmtDay, fmtTime, PageHeader, Person, StatusTag, Tag } from '../ui'
-
-/* ---------------------------------------------------------------- reviews */
-
-export function ReviewsPage({ reviews }: { reviews: Review[] }) {
-  return (
-    <>
-      <PageHeader icon="🙋" title="Needs your call"
-        description="Updates the agent wasn't sure about, or heard in a meeting. Nothing changes on the board until you choose." />
-      {reviews.length === 0 && <Empty>All clear. Uncertain updates will show up here.</Empty>}
-      <div className="reviews">
-        {reviews.map((r) => (
-          <article key={r.id} className="review">
-            <div className="review-who">
-              <Person name={r.member ?? '?'} />
-              <span className="muted small">on <b className="ink">{r.task}</b> {r.source === 'meeting' ? 'in a meeting' : 'in chat'}, {fmtTime(r.at)}</span>
-            </div>
-            {r.text && <blockquote className="quote">{r.text.replace(/^\[[^\]]*\]\s*/, '')}</blockquote>}
-            <div className="review-guess">
-              <span className="muted small">Agent's guess</span>
-              <StatusTag status={r.proposal.status} />
-              <EngineTag engine={r.proposal.engine} confidence={r.proposal.confidence} />
-            </div>
-            <p className="muted small">{r.reasons.join('; ')}</p>
-            <div className="review-actions">
-              <button className="btn-primary small" onClick={() => api.resolveReview(r.id, 'approve')}>Approve {r.proposal.status}</button>
-              {(['In Progress', 'Blocked', 'Complete'] as Status[]).filter((s) => s !== r.proposal.status).map((s) => (
-                <button key={s} className="btn-secondary small" onClick={() => api.resolveReview(r.id, s)}>Mark {s}</button>
-              ))}
-            </div>
-          </article>
-        ))}
-      </div>
-    </>
-  )
-}
+import { CHANNEL_LABEL, EngineTag, Empty, fmtDay, fmtTime, PageHeader, Person, plain, Tag } from '../ui'
 
 /* ---------------------------------------------------------------- activity */
 
@@ -57,10 +22,10 @@ export function ActivityPage({ items }: { items: Activity[] }) {
                 <span><b>{a.task}</b> {a.text} {a.engine && <EngineTag engine={a.engine} confidence={a.confidence} />}{a.reverted && <span className="muted"> (undone)</span>}</span>
               ) : (
                 <span>
-                  <b>{a.direction === 'out' ? `Coordinator to ${a.who}` : a.who}</b>{' '}
+                  <b>{a.direction === 'out' ? `Saarathi to ${a.who}` : a.who}</b>{' '}
                   {a.kind === 'conflict' && <Tag color="orange">Belief conflict</Tag>}{' '}
                   {a.kind === 'meeting' && <Tag color="purple">Meeting</Tag>}{' '}
-                  <span className="muted">{a.text}</span>
+                  <span className="muted">{plain(a.text)}</span>
                 </span>
               )}
             </li>
@@ -98,7 +63,6 @@ export function IntegrationsPage({ health }: { health: Health | null }) {
       <div className="connections">
         {rows.map((r) => (
           <div key={r.name} className="connection">
-            <span className="conn-icon" aria-hidden>{r.icon}</span>
             <div className="conn-body">
               <div className="conn-name">{r.name} <Tag color={r.on ? 'green' : 'gray'}>{r.on ? 'Connected' : 'Not connected'}</Tag>
                 {r.detail && <span className="muted small"> {r.detail}</span>}</div>
@@ -108,7 +72,6 @@ export function IntegrationsPage({ health }: { health: Health | null }) {
           </div>
         ))}
       </div>
-      {h && <Callout icon="ℹ️" color="gray">Running as <b>{h.role}</b> in <b>{h.env}</b>, mode <b>{h.mode}</b>.</Callout>}
     </>
   )
 }
@@ -131,7 +94,7 @@ export function TeamPage({ tick }: { tick: number }) {
                 <td><Person name={m.name} /></td>
                 <td>{m.role === 'lead' ? <Tag color="purple">Lead</Tag> : <span className="muted">Member</span>}</td>
                 <td className="muted">{m.email ?? '—'}</td>
-                <td>{m.channels.length ? m.channels.map((c) => <Tag key={c}>{CHANNEL_ICON[c]} {CHANNEL_LABEL[c]}</Tag>) : <span className="muted">None yet</span>}</td>
+                <td>{m.channels.length ? m.channels.map((c) => <Tag key={c}>{CHANNEL_LABEL[c]}</Tag>) : <span className="muted">None yet</span>}</td>
                 <td>
                   {m.channels.length > 1 ? (
                     <select className="input small" value={m.preferred ?? ''} aria-label={`Preferred app for ${m.name}`}

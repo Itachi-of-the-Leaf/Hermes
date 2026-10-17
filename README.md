@@ -40,7 +40,7 @@ uvicorn app.main:app --reload --port 8000
 # frontend (second terminal)
 cd frontend
 npm install
-npm run dev                                             # http://localhost:5173
+npm run dev                                             # landing page http://localhost:5173, dashboard /dashboard/
 ```
 
 With no keys at all, the rules engine runs and the sidebar's **Test without apps** panel lets you play the scenario. Add tokens in `.env` to connect real apps; see [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md):

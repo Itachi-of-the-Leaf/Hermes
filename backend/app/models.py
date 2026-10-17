@@ -49,6 +49,7 @@ class Task(SQLModel, table=True):
     id: str = Field(primary_key=True)                   # "T2"
     title: str
     owner_id: int = Field(foreign_key="member.id")
+    requested_by_id: Optional[int] = None               # who asked for it (chat or task: command); None = dashboard/seed
     status: str = "Pending"
     progress_pct: Optional[int] = None
     deadline: Optional[str] = None

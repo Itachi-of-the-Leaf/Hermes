@@ -60,6 +60,7 @@ class TNode:
     blocker_text: str | None = None
     blocked_by_id: int | None = None
     blocker_resolved: bool = False
+    requested_by_id: int | None = None
 
     @property
     def is_open(self) -> bool:
@@ -101,7 +102,7 @@ class ProjectGraph:
                        status=t.status, deps=[d.strip() for d in t.depends_on.split(",") if d.strip()],
                        deadline=parse_deadline(t.deadline), est_minutes=t.est_minutes, progress_pct=t.progress_pct,
                        blocker_text=t.blocker_text, blocked_by_id=t.blocked_by_id,
-                       blocker_resolved=t.blocker_resolved)
+                       blocker_resolved=t.blocker_resolved, requested_by_id=t.requested_by_id)
                  for t in s.exec(select(Task)).all()]
         return cls(nodes, members)
 

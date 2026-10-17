@@ -66,6 +66,8 @@ def _network_from_database(s: Session) -> dict:
                       **({"late_minutes": tf["late_min"]} if tf else {}), **({"blocker": t.blocker_text} if t.blocker_text else {})})
         edges += [{"source": "Project:main", "target": f"Task:{t.id}", "type": "HAS_TASK"},
                   {"source": f"Person:{t.owner_id}", "target": f"Task:{t.id}", "type": "OWNS"}]
+        if t.requested_by_id and t.requested_by_id != t.owner_id and t.requested_by_id in owners:
+            edges.append({"source": f"Person:{t.requested_by_id}", "target": f"Task:{t.id}", "type": "REQUESTED"})
         edges += [{"source": f"Task:{t.id}", "target": f"Task:{d.strip()}", "type": "DEPENDS_ON"}
                   for d in t.depends_on.split(",") if d.strip()]
     return {"nodes": nodes, "edges": edges}

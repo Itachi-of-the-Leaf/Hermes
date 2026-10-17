@@ -223,7 +223,7 @@ export interface NetNode {
   priority_score?: number
 }
 
-export interface NetEdge { source: string; target: string; type: 'OWNS' | 'DEPENDS_ON' | 'HAS_TASK' | string }
+export interface NetEdge { source: string; target: string; type: 'OWNS' | 'REQUESTED' | 'DEPENDS_ON' | 'HAS_TASK' | string }
 
 export interface NetworkData {
   source: 'neo4j' | 'database'

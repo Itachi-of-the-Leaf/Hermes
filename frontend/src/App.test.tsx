@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
@@ -61,14 +61,14 @@ describe('App shell', () => {
   it('shows the connecting hint until the backend answers', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
     render(<App />)
-    expect(screen.getByText(/Connecting to the coordinator/)).toBeInTheDocument()
+    expect(screen.getByText(/Connecting to Saarathi/)).toBeInTheDocument()
   })
 
   it('stays on the hint (no crash) when the backend is down', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('refused'))))
     render(<App />)
     await new Promise((r) => setTimeout(r, 20))
-    expect(screen.getByText(/Connecting to the coordinator/)).toBeInTheDocument()
+    expect(screen.getByText(/Connecting to Saarathi/)).toBeInTheDocument()
   })
 
   it('renders every task on the default Tasks page', async () => {
@@ -82,21 +82,24 @@ describe('App shell', () => {
     mockApi()
     render(<App />)
     await loaded()
-    for (const l of ['Project tasks', 'Forecast & agent', 'Graph database', 'Meetings', 'Needs your call', 'Activity', 'Team', 'Connections'])
+    for (const l of ['Project tasks', 'Forecast & agent', 'Graph database', 'Meetings', 'Activity', 'Team', 'Connections'])
       expect(screen.getAllByText(l).length).toBeGreaterThan(0)
   })
 
   it('summarises progress in the sidebar pulse', async () => {
     mockApi()
     render(<App />)
-    expect(await screen.findByText(/50% done, 1 blocked/)).toBeInTheDocument()
+    const pulse = await screen.findByLabelText('Project status')
+    expect(await within(pulse).findByText('50% done')).toBeInTheDocument()       // the CountUp's final value, as read aloud
+    expect(pulse).toHaveTextContent(', 1 blocked')
   })
 
-  it('shows the review badge when the lead has items waiting', async () => {
+  it('has no Needs your call page; the lead answers those in chat', async () => {
     mockApi({ '/api/reviews': [{ id: 1 }, { id: 2 }] })
     render(<App />)
     await loaded()
-    await waitFor(() => expect(document.querySelector('.badge')).toHaveTextContent('2'))
+    expect(screen.queryByText('Needs your call')).not.toBeInTheDocument()
+    expect(document.querySelector('.badge')).toBeNull()
   })
 
   it('reports rules-only mode with no apps connected', async () => {
@@ -148,7 +151,6 @@ describe('App shell', () => {
 describe('routing', () => {
   it.each([
     ['#/activity', 'Activity'],
-    ['#/reviews', 'Needs your call'],
     ['#/integrations', 'Connections'],
     ['#/nonsense', 'Project tasks'],
   ])('%s highlights %s', async (hash, label) => {

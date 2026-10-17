@@ -52,7 +52,7 @@ class Settings:
     # ---- Meeting bot (Recall.ai joins Teams / Zoom / Meet as a participant)
     recall_api_key: str = _s("RECALL_API_KEY")
     recall_region: str = _s("RECALL_REGION", "us-east-1")
-    recall_bot_name: str = _s("RECALL_BOT_NAME", "Project Coordinator")
+    recall_bot_name: str = _s("RECALL_BOT_NAME", "Saarathi")
     webhook_token: str = _s("WEBHOOK_TOKEN", "dev-webhook-token")   # shared secret in webhook URLs
     meeting_auto_apply: bool = _b("MEETING_AUTO_APPLY", False)       # default: meeting updates go to the lead
 

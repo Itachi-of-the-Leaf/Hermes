@@ -127,11 +127,11 @@ try:
         pg = br.new_page(viewport={"width": 1400, "height": 1000})
         errors = []
         pg.on("pageerror", lambda e: errors.append(str(e)))
-        pg.goto("http://localhost:5173/#/meetings")
+        pg.goto("http://localhost:5173/dashboard/#/meetings")
         pg.wait_for_timeout(2000)
         txt = pg.inner_text("main")
         check("the Meetings page lists the call", "Simulated Recall call" in txt, txt[:160].replace("\n", " "))
-        pg.goto(f"http://localhost:5173/#/meetings/{mid}")
+        pg.goto(f"http://localhost:5173/dashboard/#/meetings/{mid}")
         pg.wait_for_timeout(2500)
         pg.click("summary:has-text('Transcript')")                 # collapsed once a summary exists
         pg.check("text=Show every line")

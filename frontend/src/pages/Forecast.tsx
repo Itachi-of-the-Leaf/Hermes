@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AgentActionRow, Forecast, GraphData, RiskEvent, Status } from '../api'
 import { api } from '../api'
-import { Callout, Empty, fmtTime, PageHeader, StatusTag, Tag } from '../ui'
+import { Callout, Empty, fmtTime, PageHeader, plain, StatusTag, Tag } from '../ui'
 import { humanMinutes, layers } from './forecastUtil'
 
 const SEVERITY_COLOR = { HIGH: 'red', MEDIUM: 'orange', LOW: 'gray' } as const
@@ -184,7 +184,7 @@ export function ForecastPage({ tick }: { tick: number }) {
                 <Tag color="purple">{ACTION_LABEL[a.type] ?? a.type}</Tag> <b>{a.recipient}</b> about <b>{a.task}</b>{' '}
                 <Tag color={ACTION_STATUS_COLOR[a.status]} title={a.status === 'unreachable' ? 'Not connected to Slack or Telegram yet, so nothing was sent' : undefined}>{a.status}</Tag>
                 {a.commitment_at && <span className="muted small"> promised {fmtTime(a.commitment_at)}</span>}
-                <div className="muted">{a.text}</div>
+                <div className="muted">{plain(a.text)}</div>
                 {a.response_text && <div className="small">↩ “{a.response_text}”</div>}
                 {a.evidence.length > 0 && (
                   <details className="toggle"><summary>Why this message</summary>
