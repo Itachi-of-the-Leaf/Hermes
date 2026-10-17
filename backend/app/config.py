@@ -120,6 +120,10 @@ class Settings:
             self.database_url = (
                 f"postgresql+psycopg://{quote_plus(_s('DB_USER', 'coordinator'))}:{quote_plus(_s('DB_PASSWORD'))}"
                 f"@{_s('DB_HOST')}:{_s('DB_PORT', '5432')}/{_s('DB_NAME', 'coordinator')}?sslmode=require")
+        # Render, Neon and Heroku hand out postgres:// URLs; only the psycopg (v3) driver is installed.
+        for prefix in ("postgres://", "postgresql://"):
+            if self.database_url.startswith(prefix):
+                self.database_url = "postgresql+psycopg://" + self.database_url[len(prefix):]
 
     @property
     def jev_enabled(self) -> bool:
