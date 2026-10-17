@@ -23,6 +23,7 @@ const base: NetworkData = {
     { source: 'Project:main', target: 'Task:T1', type: 'HAS_TASK' }, { source: 'Project:main', target: 'Task:T2', type: 'HAS_TASK' },
     { source: 'Person:1', target: 'Task:T1', type: 'OWNS' }, { source: 'Person:2', target: 'Task:T2', type: 'OWNS' },
     { source: 'Task:T2', target: 'Task:T1', type: 'DEPENDS_ON' },
+    { source: 'Person:1', target: 'Task:T2', type: 'REQUESTED' },
   ],
 }
 
@@ -56,10 +57,22 @@ describe('NetworkPage', () => {
     expect(dep[0]).toHaveAttribute('marker-end')
   })
 
+  it('draws who asked for a task in its own colour and names them in the details', async () => {
+    mock(base)
+    const { container } = render(<NetworkPage tick={0} />)
+    await screen.findByText('Live from Neo4j')
+    const req = container.querySelectorAll('path[data-edge="REQUESTED"]')
+    expect(req).toHaveLength(1)
+    expect(req[0]).toHaveAttribute('stroke', 'var(--edge-requested)')
+    expect(req[0]).toHaveAttribute('marker-end', 'url(#net-arrow-req)')
+    fireEvent.click(container.querySelector('g[aria-label="Task Connect the payment API"]')!)
+    expect(screen.getByText('Asked by')).toBeInTheDocument()
+  })
+
   it('counts nodes and relationships in plain words', async () => {
     mock(base)
     render(<NetworkPage tick={0} />)
-    expect(await screen.findByText(/5 nodes \(1 project, 2 persons, 2 tasks\) · 5 relationships/)).toBeInTheDocument()
+    expect(await screen.findByText(/5 nodes \(1 project, 2 persons, 2 tasks\) · 6 relationships/)).toBeInTheDocument()
   })
 
   it('links to the Neo4j browser when there is one', async () => {
@@ -144,6 +157,46 @@ describe('NetworkPage', () => {
     const svg = container.querySelector('svg[data-width]')!
     expect(svg).toHaveAttribute('width', '100%')
     expect(svg.getAttribute('viewBox')).toMatch(/^0 0 \d+ \d+$/)
+  })
+
+  it('legend chips show and hide each kind of relationship', async () => {
+    mock(base)
+    const { container } = render(<NetworkPage tick={0} />)
+    await screen.findByText('Live from Neo4j')
+    fireEvent.click(screen.getByLabelText(/owns/))
+    expect(container.querySelectorAll('path[data-edge="OWNS"]')).toHaveLength(0)
+    fireEvent.click(screen.getByLabelText(/owns/))
+    expect(container.querySelectorAll('path[data-edge="OWNS"]')).toHaveLength(2)
+  })
+
+  it('hovering a node lights up its neighbours and fades the rest', async () => {
+    mock(base)
+    const { container } = render(<NetworkPage tick={0} />)
+    await screen.findByText('Live from Neo4j')
+    fireEvent.mouseEnter(container.querySelector('g[aria-label="Person Soham"]')!)
+    expect(container.querySelector('.net-stage')).toHaveClass('has-focus')
+    expect(container.querySelector('g[aria-label="Task Connect the payment API"]')).toHaveClass('is-near')
+    expect(container.querySelector('g[aria-label="Task Get credentials"]')).not.toHaveClass('is-near')
+  })
+
+  it('a relationship in the details jumps to the other node', async () => {
+    mock(base)
+    const { container } = render(<NetworkPage tick={0} />)
+    await screen.findByText('Live from Neo4j')
+    fireEvent.click(container.querySelector('g[aria-label="Person Soham"]')!)
+    fireEvent.click(screen.getByRole('button', { name: /owns → Connect the payment API/ }))
+    expect(await screen.findByLabelText('Node details')).toHaveTextContent('waiting for credentials')
+  })
+
+  it('zooms in and back to fit', async () => {
+    mock(base)
+    const { container } = render(<NetworkPage tick={0} />)
+    await screen.findByText('Live from Neo4j')
+    const svg = container.querySelector('svg[data-width]') as SVGSVGElement
+    fireEvent.click(screen.getByLabelText('Zoom in'))
+    expect(svg.style.width).toMatch(/px$/)
+    fireEvent.click(screen.getByRole('button', { name: 'Fit' }))
+    expect(svg.style.width).toBe('')
   })
 
   it('tells you when the backend cannot be reached', async () => {

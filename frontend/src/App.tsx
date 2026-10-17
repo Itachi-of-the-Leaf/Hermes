@@ -6,22 +6,23 @@ import { NetworkPage } from './pages/Network'
 import { presetsFor } from './devPresets'
 import { MeetingDoc, MeetingsPage } from './pages/Meetings'
 import { TasksPage } from './pages/Tasks'
-import { ActivityPage, IntegrationsPage, ReviewsPage, TeamPage } from './pages/Workspace'
+import { ActivityPage, IntegrationsPage, TeamPage } from './pages/Workspace'
+import CountUp from './components/reactbits/CountUp'
+import { Logo } from './components/Logo'
 import { Empty } from './ui'
 
 const NAV: [string, string, string][] = [
-  ['tasks', '✅', 'Project tasks'],
-  ['forecast', '📈', 'Forecast & agent'],
-  ['graph', '🕸️', 'Graph database'],
-  ['meetings', '🎙️', 'Meetings'],
-  ['reviews', '🙋', 'Needs your call'],
-  ['activity', '🕘', 'Activity'],
-  ['team', '👥', 'Team'],
-  ['integrations', '🔌', 'Connections'],
+  ['tasks', '', 'Project tasks'],
+  ['forecast', '', 'Forecast & agent'],
+  ['graph', '', 'Graph database'],
+  ['meetings', '', 'Meetings'],
+  ['activity', '', 'Activity'],
+  ['team', '', 'Team'],
+  ['integrations', '', 'Connections'],
 ]
 
 export default function App() {
-  const { board, activity, reviews, health, live, tick } = useLiveData()
+  const { board, activity, health, live, tick } = useLiveData()
   const [route, go] = useRoute()
   const [toast, setToast] = useState<string | null>(null)
   const [navOpen, setNavOpen] = useState(false)
@@ -35,7 +36,7 @@ export default function App() {
 
   let body
   if (!board) {
-    body = <Empty>Connecting to the coordinator on localhost:8000… Start it with <code>uvicorn app.main:app --reload</code>.</Empty>
+    body = <Empty>Connecting to Saarathi on localhost:8000… Start it with <code>uvicorn app.main:app --reload</code>.</Empty>
   } else if (page === 'meetings' && route[1]) {
     body = <MeetingDoc id={Number(route[1])} tick={tick} go={go} />
   } else if (page === 'meetings') {
@@ -44,8 +45,6 @@ export default function App() {
     body = <NetworkPage tick={tick} />
   } else if (page === 'forecast') {
     body = <ForecastPage tick={tick} />
-  } else if (page === 'reviews') {
-    body = <ReviewsPage reviews={reviews} />
   } else if (page === 'activity') {
     body = <ActivityPage items={activity} />
   } else if (page === 'team') {
@@ -59,17 +58,14 @@ export default function App() {
   return (
     <div className={`shell ${navOpen ? 'nav-open' : ''}`}>
       <aside className="sidebar" aria-label="Workspace">
-        <div className="workspace">
-          <span className="ws-icon" aria-hidden>G</span>
-          <span className="ws-name">Group project</span>
-        </div>
+        <a className="workspace" href="/" title="Back to the Saarathi home page">
+          <span className="ws-name"><Logo size={26} />Saarathi</span>
+          <span className="ws-project">Group project</span>
+        </a>
         <nav>
-          {NAV.map(([key, icon, label]) => (
+          {NAV.map(([key, , label]) => (
             <a key={key} href={`#/${key}`} className={`nav-item ${current[0] === key ? 'on' : ''}`} onClick={() => setNavOpen(false)}>
-              <span aria-hidden>{icon}</span>
-              <span className="nav-label">{label}</span>
-              {key === 'reviews' && reviews.length > 0 && <span className="badge">{reviews.length}</span>}
-            </a>
+              <span className="nav-label">{label}</span>            </a>
           ))}
         </nav>
         {board && <Pulse board={board} />}
@@ -78,7 +74,7 @@ export default function App() {
 
       <div className="main">
         <div className="topbar">
-          <button className="btn-text menu" onClick={() => setNavOpen(!navOpen)} aria-label="Menu">☰</button>
+          <button className="btn-text menu" onClick={() => setNavOpen(!navOpen)} aria-label="Menu">Menu</button>
           <span className="crumbs"><span className="hide-sm">Group project / </span><b>{current[2]}</b></span>
           <span className={`live ${live ? 'on' : ''}`} title={live ? 'Live updates on' : 'Reconnecting'}>
             <span className="dot" />{live ? 'Live' : 'Reconnecting'}
@@ -123,7 +119,7 @@ function Pulse({ board }: { board: Board }) {
         {seg(c['Complete'] ?? 0, 'green')}{seg(c['In Progress'] ?? 0, 'blue')}{seg(c['Blocked'] ?? 0, 'red')}{seg(c['Pending'] ?? 0, 'gray')}
       </div>
       <div className="small muted">
-        {Math.round(((c['Complete'] ?? 0) / total) * 100)}% done
+        <CountUp to={Math.round(((c['Complete'] ?? 0) / total) * 100)} duration={1.2} trigger="load" suffix="% done" />
         {(c['Blocked'] ?? 0) > 0 && `, ${c['Blocked']} blocked`}
         {(c['At Risk'] ?? 0) > 0 && `, ${c['At Risk']} at risk`}
       </div>

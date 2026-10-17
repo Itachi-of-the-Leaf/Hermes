@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
     await runtime.stop()
 
 
-app = FastAPI(title="AI Group Project Coordinator", lifespan=lifespan)
+app = FastAPI(title="Saarathi", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin, "http://localhost:5173"],
                    allow_methods=["*"], allow_headers=["*"])
 setup_tracing(app, engine)
@@ -89,6 +89,7 @@ class TaskIn(BaseModel):
     deadline: str | None = None            # 2026-10-25
     est_minutes: int | None = None
     depends_on: list[str] = []
+    requested_by_key: str | None = None    # who asked for it, if not the owner themself
 
 
 @app.post("/api/tasks")
@@ -96,9 +97,13 @@ def create_task(body: TaskIn, s: Session = Depends(get_session)):
     owner = s.exec(select(Member).where(Member.key == body.owner_key)).first()
     if not owner:
         raise HTTPException(400, f"no member {body.owner_key}")
+    asker = s.exec(select(Member).where(Member.key == body.requested_by_key)).first() if body.requested_by_key else None
+    if body.requested_by_key and not asker:
+        raise HTTPException(400, f"no member {body.requested_by_key}")
     try:
         t = service.create_task(s, title=body.title, owner_id=owner.id, deadline=body.deadline,
-                                est_minutes=body.est_minutes, depends_on=body.depends_on)
+                                est_minutes=body.est_minutes, depends_on=body.depends_on,
+                                requested_by_id=asker.id if asker else None)
     except ValueError as e:
         raise HTTPException(400, str(e))
     return {"id": t.id, "title": t.title}

@@ -133,6 +133,19 @@ def test_activity_feed_records_changes(c):
     assert len(c.get("/api/activity").json()) >= 1
 
 
+def test_activity_shows_names_instead_of_mention_tokens(c):
+    from sqlmodel import Session, select
+
+    from app.db import engine
+    from app.models import Member, Message
+    with Session(engine) as s:
+        kabir = s.exec(select(Member).where(Member.key == "kabir")).first()
+        s.add(Message(member_id=kabir.id, direction="out", text=f"New task T9 for {{M{kabir.id}}} and {{M999}}"))
+        s.commit()
+    texts = [i["text"] for i in c.get("/api/activity").json() if i["type"] == "message"]
+    assert "New task T9 for @Kabir and @someone" in texts
+
+
 def test_undo_restores_previous_status(c):
     c.post("/api/dev/message", json={"member_key": "kabir", "text": "working on it"})
     ev = [i for i in c.get("/api/tasks/T2/timeline").json()["items"] if i["type"] == "event"][-1]

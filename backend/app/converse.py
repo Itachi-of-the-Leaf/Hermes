@@ -279,7 +279,7 @@ def apply(s: Session, speaker: Member, proposals: list[Proposal]) -> tuple[list[
         deps = [new_ids.get(a[4:], None) if a.startswith("new:") else a for a in p.after]
         try:
             t = service.create_task(s, title=p.title, owner_id=p.owner_id, deadline=p.due, est_minutes=p.est_minutes,
-                                    depends_on=[d for d in deps if d])
+                                    depends_on=[d for d in deps if d], requested_by_id=speaker.id)
         except ValueError as e:
             log.info("skipped %r: %s", p.title, e)
             continue

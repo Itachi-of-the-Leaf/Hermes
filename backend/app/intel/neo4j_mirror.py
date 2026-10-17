@@ -48,6 +48,15 @@ OPTIONAL MATCH (:Person)-[old:OWNS]->(t) DELETE old
 MERGE (p)-[:OWNS]->(t)
 """
 
+# who asked the owner to do it; only drawn when that is someone else ("I'll do X" needs no second line)
+SET_REQUESTER = """
+MATCH (t:Task {id: $id})
+OPTIONAL MATCH (:Person)-[old:REQUESTED]->(t) DELETE old
+WITH t
+MATCH (p:Person {id: $requester}) WHERE $requester <> $owner_id
+MERGE (p)-[:REQUESTED]->(t)
+"""
+
 # dependencies are replaced wholesale per task so a removed dependency disappears from the graph
 CLEAR_DEPS = "MATCH (t:Task {id: $id})-[r:DEPENDS_ON]->() DELETE r"
 ADD_DEP = "MATCH (b:Task {id: $task}), (a:Task {id: $dep}) MERGE (b)-[:DEPENDS_ON]->(a)"
@@ -151,6 +160,7 @@ def sync(g: ProjectGraph, cur: ScheduleResult | None, project_id: str = "main", 
                      deadline=t.deadline.isoformat() if t.deadline else None, duration=tf.duration_min if tf else None,
                      forecast_start=tf.start if tf else None, forecast_end=tf.end if tf else None,
                      late=tf.late_min if tf else None, blocker=t.blocker_text, priority=priorities.get(t.id))
+            sess.run(SET_REQUESTER, id=t.id, requester=str(t.requested_by_id), owner_id=str(t.owner_id))
             sess.run(CLEAR_DEPS, id=t.id)
         for t in g.tasks.values():                       # pass 2: dependencies may point at tasks listed later
             for d in t.deps:

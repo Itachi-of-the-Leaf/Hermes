@@ -294,3 +294,57 @@ def test_health_reports_whether_neo4j_and_the_slack_channel_are_set(world, monke
     assert h["neo4j"] is True and h["slack_project_channel"] is True
     monkeypatch.setattr(settings, "neo4j_uri", "")
     assert world.get("/api/health").json()["neo4j"] is False
+
+
+# ================================================================ who asked for a task (REQUESTED, drawn in its own colour)
+
+def requested_edges(c):
+    return {(e["source"], e["target"]) for e in c.get("/api/intel/network").json()["edges"] if e["type"] == "REQUESTED"}
+
+
+def test_a_task_someone_else_asked_for_gets_a_requested_edge(world):
+    from app import service
+    with Session(db_engine) as s:
+        aanya = s.get(Member, pid("aanya"))
+        service.handle_task_command(s, aanya, "task: Write the deployment guide @kabir")
+        tid = s.exec(select(Task).where(Task.title == "Write the deployment guide")).first().id
+    assert (f"Person:{pid('aanya')}", f"Task:{tid}") in requested_edges(world)
+
+
+def test_a_task_people_take_on_themselves_has_no_requested_edge(world):
+    from app import service
+    with Session(db_engine) as s:
+        service.handle_task_command(s, s.get(Member, pid("kabir")), "task: Clean up the CSS")
+    assert requested_edges(world) == set()
+
+
+def test_the_dashboard_can_say_who_asked(world):
+    r = world.post("/api/tasks", json={"title": "Book the demo room", "owner_key": "kabir", "requested_by_key": "aanya"})
+    assert r.status_code == 200
+    assert (f"Person:{pid('aanya')}", f"Task:{r.json()['id']}") in requested_edges(world)
+    assert world.post("/api/tasks", json={"title": "x task", "owner_key": "kabir", "requested_by_key": "nobody"}).status_code == 400
+
+
+def test_neo4j_sync_writes_the_requester_only_for_someone_else():
+    from app.intel import neo4j_mirror
+    from app.intel.graph import ProjectGraph, TNode
+
+    calls = []
+
+    class Sess:
+        def run(self, q, **kw):
+            calls.append((q, kw))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    class Driver:
+        def session(self):
+            return Sess()
+    g = ProjectGraph([TNode(id="T1", title="a", owner_id=2, owner="B", status="Pending", requested_by_id=1)], {1: "A", 2: "B"})
+    neo4j_mirror.sync(g, None, driver=Driver())
+    [kw] = [kw for q, kw in calls if q is neo4j_mirror.SET_REQUESTER]
+    assert kw == {"id": "T1", "requester": "1", "owner_id": "2"}

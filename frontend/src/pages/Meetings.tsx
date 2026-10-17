@@ -93,7 +93,7 @@ export function MeetingsPage({ health, tick, go }: { health: Health | null; tick
           <tbody>
             {rows.map((m) => (
               <tr key={m.id} onClick={() => go(`meetings/${m.id}`)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && go(`meetings/${m.id}`)}>
-                <td className="cell-title">📄 {m.title}</td>
+                <td className="cell-title">{m.title}</td>
                 <td><Tag color={STATUS_TAG[m.status][0]}>{STATUS_TAG[m.status][1]}</Tag></td>
                 <td className="muted">{fmtDay(m.created_at)}</td>
                 <td>{m.stats.utterances ?? '—'}</td>
@@ -180,8 +180,7 @@ export function MeetingDoc({ id, tick, go }: { id: number; tick: number; go: (p:
         </>)}
         {(m.stats.reviews ?? 0) > 0 && (
           <Callout icon="🙋" color="gray">
-            {m.stats.reviews} task update{m.stats.reviews === 1 ? '' : 's'} heard in this meeting {m.stats.reviews === 1 ? 'is' : 'are'} waiting for the lead.{' '}
-            <button className="btn-text" onClick={() => go('reviews')}>Review updates</button>
+            {m.stats.reviews} task update{m.stats.reviews === 1 ? '' : 's'} heard in this meeting {m.stats.reviews === 1 ? 'is' : 'are'} waiting for the lead, who was asked to confirm in chat.
           </Callout>
         )}
       </>)}

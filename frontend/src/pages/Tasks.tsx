@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Board, Task, TimelineItem } from '../api'
 import { api, STATUSES } from '../api'
-import { Callout, Empty, EngineTag, fmtDate, fmtTime, PageHeader, Person, StatusTag, STATUS_COLOR, Tag } from '../ui'
+import CountUp from '../components/reactbits/CountUp'
+import { Callout, Empty, EngineTag, fmtDate, fmtTime, PageHeader, Person, plain, StatusTag, STATUS_COLOR, Tag } from '../ui'
 
 type View = 'board' | 'table'
 
@@ -51,10 +52,10 @@ export function TasksPage({ board, tick }: { board: Board; tick: number }) {
       )}
       <div className="views" role="tablist">
         <button role="tab" aria-selected={view === 'board'} className={view === 'board' ? 'on' : ''} onClick={() => choose('board')}>
-          ▦ Board
+          Board
         </button>
         <button role="tab" aria-selected={view === 'table'} className={view === 'table' ? 'on' : ''} onClick={() => choose('table')}>
-          ☰ Table
+          Table
         </button>
         <span className="views-count">{board.tasks.length} tasks</span>
       </div>
@@ -136,7 +137,7 @@ function BoardView({ board, onOpen }: { board: Board; onOpen: (id: string) => vo
           <section key={st} className="board-col" aria-label={st}>
             <h2 className="board-head">
               <StatusTag status={st} />
-              <span className="count">{tasks.length}</span>
+              <span className="count"><CountUp to={tasks.length} duration={0.9} trigger="load" /></span>
             </h2>
             {tasks.map((t) => <Card key={t.id} t={t} onOpen={() => onOpen(t.id)} />)}
           </section>
@@ -273,11 +274,11 @@ function SidePeek({ task, board, tick, onClose }: { task: Task; board: Board; ti
           {items.map((i, idx) =>
             i.type === 'message' ? (
               <li key={`m${idx}`} className={`comment ${i.direction}`}>
-                <Person name={i.direction === 'out' ? 'Coordinator' : (i.who ?? '?')} size={20} />
+                <Person name={i.direction === 'out' ? 'Saarathi' : (i.who ?? '?')} size={20} />
                 <span className="muted small">
                   {i.direction === 'out' && `to ${i.who} `}{fmtTime(i.at)}{i.channel ? `, via ${i.channel}` : ''}
                 </span>
-                <p>{i.text}</p>
+                <p>{plain(i.text)}</p>
               </li>
             ) : (
               <li key={`e${idx}`} className={`change ${i.reverted ? 'reverted' : ''}`}>
