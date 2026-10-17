@@ -1,21 +1,51 @@
 import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import type { Activity, ChannelName, Health, TeamMember } from '../api'
 import { api } from '../api'
 import { CHANNEL_LABEL, EngineTag, Empty, fmtDay, fmtTime, PageHeader, Person, plain, Tag } from '../ui'
 
 /* ---------------------------------------------------------------- activity */
 
+const FILTERS: [string, string, (a: Activity) => boolean][] = [
+  ['all', 'All', () => true],
+  ['messages', 'Messages', (a) => a.type === 'message' && a.direction !== 'out'],
+  ['changes', 'Status changes', (a) => a.type === 'event'],
+  ['agent', 'From the agent', (a) => a.type === 'message' && a.direction === 'out'],
+]
+const rowKey = (a: Activity) => `${a.type}|${a.at}|${a.who ?? a.task ?? ''}|${a.text.slice(0, 48)}`
+
 export function ActivityPage({ items }: { items: Activity[] }) {
+  const [filter, setFilter] = useState('all')
+  const shown = items.filter(FILTERS.find((f) => f[0] === filter)![2])
   let lastDay = ''
+  const seen = new Map<string, number>()
+  const keyOf = (a: Activity) => {
+    const base = rowKey(a), n = seen.get(base) ?? 0
+    seen.set(base, n + 1)
+    return n ? `${base}#${n}` : base
+  }
   return (
     <>
       <PageHeader icon="🕘" title="Activity" description="Every message the agent sent or received, and every change it made." />
+      <div className="views" role="tablist" aria-label="Filter activity">
+        {FILTERS.map(([key, label, test]) => (
+          <button key={key} role="tab" aria-selected={filter === key} className={filter === key ? 'on' : ''} onClick={() => setFilter(key)}>
+            {label} <span className="views-n">{items.filter(test).length}</span>
+          </button>
+        ))}
+        <span className="views-count"><span className="live-dot" aria-hidden="true" />updates live</span>
+      </div>
       <ol className="feed">
-        {items.map((a, i) => {
+        <AnimatePresence initial={false}>
+        {shown.map((a) => {
           const day = fmtDay(a.at)
           const header = day !== lastDay ? (lastDay = day) : null
+          const kind = a.type === 'event' ? 'change' : a.direction === 'out' ? 'agent' : 'message'
           return (
-            <li key={i} className={`feed-row ${a.kind === 'conflict' ? 'conflict' : ''}`}>
+            <motion.li key={keyOf(a)} layout="position" className={`feed-row k-${kind} ${a.kind === 'conflict' ? 'conflict' : ''}`}
+              initial={{ opacity: 0, x: -14, backgroundColor: 'rgba(34, 57, 111, 0.10)' }}
+              animate={{ opacity: 1, x: 0, backgroundColor: 'rgba(34, 57, 111, 0)' }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease: [0.2, 0.7, 0.2, 1], backgroundColor: { duration: 1.6 } }}>
               {header && <div className="feed-day">{header}</div>}
               <span className="muted small ts">{fmtTime(a.at)}</span>
               {a.type === 'event' ? (
@@ -28,11 +58,13 @@ export function ActivityPage({ items }: { items: Activity[] }) {
                   <span className="muted">{plain(a.text)}</span>
                 </span>
               )}
-            </li>
+            </motion.li>
           )
         })}
+        </AnimatePresence>
       </ol>
       {items.length === 0 && <Empty>Nothing yet. Send check-ins to get things moving.</Empty>}
+      {items.length > 0 && shown.length === 0 && <Empty>Nothing of this kind yet.</Empty>}
     </>
   )
 }

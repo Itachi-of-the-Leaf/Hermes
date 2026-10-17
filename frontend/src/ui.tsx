@@ -82,10 +82,12 @@ export function PageHeader({ icon, title, description, children }: {
 }) {
   return (
     <header className="page-header" data-icon={icon}>
-      {/* React Bits BlurText: the title resolves word by word when the page opens */}
-      <h1 className="page-title"><BlurText key={title} text={title} trigger="load" animateBy="words" direction="bottom" delay={90} /></h1>
-      {description && <p className="page-desc">{description}</p>}
-      {children}
+      <div className="ph-main">
+        {/* React Bits BlurText: the title resolves word by word when the page opens */}
+        <h1 className="page-title"><BlurText key={title} text={title} trigger="load" animateBy="words" direction="bottom" delay={90} /></h1>
+        {description && <p className="page-desc">{description}</p>}
+      </div>
+      {children && <div className="ph-aside">{children}</div>}
     </header>
   )
 }

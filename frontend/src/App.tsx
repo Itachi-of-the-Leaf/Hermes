@@ -7,6 +7,7 @@ import { presetsFor } from './devPresets'
 import { MeetingDoc, MeetingsPage } from './pages/Meetings'
 import { TasksPage } from './pages/Tasks'
 import { ActivityPage, IntegrationsPage, TeamPage } from './pages/Workspace'
+import { motion, MotionConfig } from 'motion/react'
 import CountUp from './components/reactbits/CountUp'
 import { Logo } from './components/Logo'
 import { Empty } from './ui'
@@ -58,6 +59,7 @@ export default function App() {
   }
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className={`shell ${navOpen ? 'nav-open' : ''}`}>
       <aside className="sidebar" aria-label="Workspace">
         <a className="workspace" href="/" title="Back to the Saarathi home page">
@@ -67,6 +69,8 @@ export default function App() {
         <nav>
           {NAV.map(([key, , label]) => (
             <a key={key} href={`#/${key}`} className={`nav-item ${current[0] === key ? 'on' : ''}`} onClick={() => setNavOpen(false)}>
+              {current[0] === key && <motion.span layoutId="nav-active" className="nav-indicator" aria-hidden="true"
+                transition={{ type: 'spring', stiffness: 520, damping: 42 }} />}
               <span className="nav-label">{label}</span>            </a>
           ))}
         </nav>
@@ -91,10 +95,16 @@ export default function App() {
             Send check-ins
           </button>
         </div>
-        <main className="page">{body}</main>
+        <main className="page">
+          <motion.div key={route.slice(0, 2).join('/')} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.36, ease: [0.2, 0.7, 0.2, 1] }}>
+            {body}
+          </motion.div>
+        </main>
       </div>
-      {toast && <div className="toast" role="status">{toast}</div>}
+      {toast && <motion.div className="toast" role="status" initial={{ opacity: 0, y: 12, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }}>{toast}</motion.div>}
     </div>
+    </MotionConfig>
   )
 }
 
