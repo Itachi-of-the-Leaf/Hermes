@@ -73,6 +73,10 @@ class Settings:
     llm_model: str = _s("LLM_MODEL")
     llm_fallback_model: str = _s("LLM_FALLBACK_MODEL")
 
+    # ---- GitHub read-only PR and PRD ingestion
+    github_token: str = _s("GITHUB_READ_TOKEN")          # optional token; read-only contents + pull requests access
+    github_allowed_repos: str = _s("GITHUB_ALLOWED_REPOS")  # comma-separated owner/repo allowlist; no implicit local gh auth
+
     # ---- behaviour
     mode: str = _s("MODE", "auto").lower()
     auto_apply_confidence: float = _f("AUTO_APPLY_CONFIDENCE", 0.75)

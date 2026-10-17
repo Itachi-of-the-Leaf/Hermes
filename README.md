@@ -44,9 +44,10 @@ Built for worcflow.ai **PS-1 (Agentic AI track)**, Kurukshetra Hackathon 2026.
 15. [Security](#15-security)
 16. [Observability](#16-observability)
 17. [Scalability and cost](#17-scalability-and-cost)
-18. [How the project was built (PR history)](#18-how-the-project-was-built-pr-history)
-19. [Roadmap](#19-roadmap)
-20. [Team](#20-team)
+18. [GitHub PRD ingestion and PR review](#18-github-prd-ingestion-and-pr-review)
+19. [How the project was built (PR history)](#19-how-the-project-was-built-pr-history)
+20. [Roadmap](#20-roadmap)
+21. [Team](#21-team)
 
 ---
 
@@ -839,7 +840,15 @@ Structured JSON logs, OpenTelemetry traces across FastAPI, httpx, SQLAlchemy and
 
 ---
 
-## 18. How the project was built (PR history)
+## 18. GitHub PRD ingestion and PR review
+
+In the configured Telegram project group, a linked team lead can attach a Markdown or plain-text PRD with the `/prd` caption, reply to a supported file with `/prd`, or send `/prd <GitHub blob URL>`. The bot limits uploaded PRDs to 1 MiB of UTF-8 text and accepts only allowlisted GitHub repositories configured through `GITHUB_ALLOWED_REPOS`. Private repository reads require the optional `GITHUB_READ_TOKEN`, which should be a fine-grained token with only read-only Contents and Pull requests access. The bot does not use local `gh` credentials.
+
+The PRD extractor proposes tasks, deadlines, estimates, explicit roster owners, and prerequisites. It auto-creates only items with supporting evidence, confidence of at least 0.90, no duplicate, and an unambiguous roster owner. Unassigned or uncertain work and invalid, ambiguous, cyclic, or held dependencies are reported for the lead instead of guessed. It does not infer member skills or availability. Existing project tasks are created through the normal task service and sent through each owner's linked channel.
+
+For pull requests, use `/reviewpr <allowlisted PR URL>` or explicitly ask in Telegram to review a PR and include its URL. The bot retrieves PR metadata, changed-file patches and GitHub checks and returns a bounded read-only summary in Telegram. It never posts a GitHub review or comment, approves, requests changes, merges, checks out code, executes repository content, or pushes changes. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) for setup and [docs/TESTING.md](docs/TESTING.md) for the offline verification flow.
+
+## 19. How the project was built (PR history)
 
 The project was built in ten reviewable steps, each a pull request stacked on the previous one, and then a product and UI pass.
 

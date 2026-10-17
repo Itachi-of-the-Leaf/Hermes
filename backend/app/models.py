@@ -119,6 +119,18 @@ class Correction(SQLModel, table=True):
     at: datetime = Field(default_factory=now)
 
 
+class PRDIngestion(SQLModel, table=True):
+    """Source identity and bounded outcome summary for lead-authorized PRD ingestion."""
+    __tablename__ = "prd_ingestion"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source_hash: str = Field(max_length=64, index=True)
+    source_ref: str = Field(max_length=500)
+    source_name: str = Field(max_length=255)
+    uploaded_by_id: int = Field(foreign_key="member.id", index=True)
+    created_at: datetime = Field(default_factory=now)
+    result: str = "{}"                                      # JSON summary only; never persist raw PRD content
+
+
 class Meeting(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str

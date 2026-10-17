@@ -5,6 +5,7 @@ send. transport.py delivers them through Telegram (or records them, in dev mode)
 keeps the brain testable without a bot token.
 """
 import json
+import logging
 import re
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -394,6 +395,25 @@ def send_to_review(s, task, decision: Decision, member: Member, msg: Message | N
 
 async def handle_dm(s: Session, member: Member, text: str, *, reply_to: str | None = None,
                     ext_id: str | None = None, channel: str = "telegram", task_hint: str | None = None) -> list[dict]:
+    # GitHub review is triggered only by an explicit request and only reads API endpoints.
+    if channel == "telegram" and re.search(r"\b(review|check|inspect)\s+(?:this\s+)?(?:pr|pull request)\b", text, re.I):
+        urls = re.findall(r"https://github\.com/[^\s<>]+", text)
+        if urls:
+            if member.role != "lead":
+                return [out(member.id, "Only a linked team lead can request PR analysis.", "system")]
+            from . import github
+            allowed = {x.strip() for x in settings.github_allowed_repos.split(",") if x.strip()}
+            try:
+                report = await github.review_pr(urls[0].rstrip(".,;)]}"), allowed, settings.github_token)
+                files = ", ".join(f"{f['filename']} (+{f['additions']}/-{f['deletions']})" for f in report["files"][:8]) or "no file details"
+                return [out(member.id, f"🔎 Read-only PR report: <b>{escape(report['title'])}</b> · "
+                            f"{escape(report['repository'])}#{report['number']} · {escape(files)}. "
+                            "No GitHub review or comment was posted.", "system")]
+            except ValueError as exc:
+                return [out(member.id, escape(str(exc)), "system")]
+            except Exception:
+                logging.getLogger("service").exception("GitHub PR analysis failed from Telegram direct message")
+                return [out(member.id, "Could not fetch that allowlisted PR. No GitHub changes were made.", "system")]
     if not member.awaiting_blocker_task and is_task_command(text):          # "task: ..." creates a task
         reply, notes = handle_task_command(s, member, text)
         return [out(member.id, reply, "confirm")] + notes
@@ -489,6 +509,24 @@ async def decide_and_act(s, member, task, text, msg, quiet: bool = False) -> lis
 async def handle_group(s: Session, member: Member, text: str, ext_id=None, channel="telegram",
                        reply_to: str | None = None) -> list[dict]:
     """Group chat: catch teammates who believe something different from the board."""
+    if channel == "telegram" and re.search(r"\b(review|check|inspect)\s+(?:this\s+)?(?:pr|pull request)\b", text, re.I):
+        urls = re.findall(r"https://github\.com/[^\s<>]+", text)
+        if urls:
+            if member.role != "lead":
+                return [out(member.id, "Only a linked team lead can request PR analysis.", "system")]
+            from . import github
+            allowed = {x.strip() for x in settings.github_allowed_repos.split(",") if x.strip()}
+            try:
+                report = await github.review_pr(urls[0].rstrip(".,;)]}"), allowed, settings.github_token)
+                files = ", ".join(f"{f['filename']} (+{f['additions']}/-{f['deletions']})" for f in report["files"][:8]) or "no file details"
+                return [out(member.id, f"🔎 Read-only PR report: <b>{escape(report['title'])}</b> · "
+                            f"{escape(report['repository'])}#{report['number']} · {escape(files)}. "
+                            "No GitHub review or comment was posted.", "system")]
+            except ValueError as exc:
+                return [out(member.id, escape(str(exc)), "system")]
+            except Exception:
+                logging.getLogger("service").exception("GitHub PR analysis failed from Telegram group")
+                return [out(member.id, "Could not fetch that allowlisted PR. No GitHub changes were made.", "system")]
     if is_task_command(text):                          # "task: ..." in the group creates a task
         reply, notes = handle_task_command(s, member, text)
         return [out(member.id, reply, "confirm")] + notes

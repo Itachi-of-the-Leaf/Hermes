@@ -21,10 +21,10 @@ from telegram.ext import (
     filters,
 )
 
-from .. import channels, service
+from .. import channels, github, service
 from ..config import settings
 from ..db import engine
-from ..models import Member, Setting
+from ..models import Member, Setting, Task
 
 log = logging.getLogger("telegram")
 
@@ -77,9 +77,10 @@ class TelegramChannel:
         for h in (CommandHandler("start", start), CommandHandler("checkin", checkin),
                   CommandHandler("status", status), CommandHandler("help", help_cmd), CommandHandler("task", task_cmd),
                   CommandHandler("join", join_cmd), CommandHandler("setgroup", setgroup_cmd), CommandHandler("deps", deps_cmd),
+                  CommandHandler("prd", prd_cmd), CommandHandler("reviewpr", reviewpr_cmd),
                   ChatMemberHandler(on_bot_added, ChatMemberHandler.MY_CHAT_MEMBER),
                   CallbackQueryHandler(on_button), MessageHandler(filters.TEXT & ~filters.COMMAND, on_text),
-                  MessageHandler(filters.VOICE, on_voice)):
+                  MessageHandler(filters.Document.ALL, on_document), MessageHandler(filters.VOICE, on_voice)):
             self.app.add_handler(h)
         self.app.add_handler(TypeHandler(Update, stamp_update), group=-1)       # records that Telegram really reached us
         await self.app.initialize()
@@ -89,6 +90,8 @@ class TelegramChannel:
                 ("join", "Tell me who you are (works in the group)"), ("task", "Add a task: /task Title @name due friday est 3h"),
                 ("status", "Project board"), ("checkin", "Ask everyone for updates (lead)"),
                 ("deps", "Link the obvious prerequisites between tasks"),
+                ("prd", "Ingest a Markdown/text PRD (lead, attach a file)"),
+                ("reviewpr", "Read-only review of an allowlisted PR URL (lead)"),
                 ("setgroup", "Make this group the project group (lead)"), ("help", "What I can do")])
         except Exception as e:
             log.warning("could not set the command menu: %s", e)
@@ -231,6 +234,135 @@ async def deps_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             return
     await update.message.reply_html("🔗 " + "\n🔗 ".join(escape(x) for x in linked) if linked
                                     else "I do not see any obvious dependencies that are not linked already.")
+
+
+async def _prd_source(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Get bounded text only from an authorized lead and an approved Telegram/GitHub source."""
+    from .. import prd as prd_service
+    message = update.effective_message
+    chat = update.effective_chat
+    if chat.type not in (ChatType.GROUP, ChatType.SUPERGROUP):
+        await message.reply_text("Use PRD ingestion in the configured team group.")
+        return None
+    document = getattr(message, "document", None)
+    filename = getattr(document, "file_name", "") if document else ""
+    source_ref = f"telegram:{chat.id}:{message.message_id}"
+    if document:
+        if not prd_service.accepted_filename(filename):
+            await message.reply_text("Only Markdown (.md) and plain text (.txt) PRD uploads are accepted.")
+            return None
+        if getattr(document, "file_size", 0) > prd_service.MAX_SOURCE_BYTES:
+            await message.reply_text("PRD exceeds the 1 MiB upload limit.")
+            return None
+        try:
+            remote = await ctx.bot.get_file(document.file_id)
+            raw = await remote.download_as_bytearray()
+            if len(raw) > prd_service.MAX_SOURCE_BYTES:
+                raise ValueError("oversized file")
+            text = bytes(raw).decode("utf-8")
+        except (UnicodeDecodeError, ValueError):
+            await message.reply_text("PRD must be valid UTF-8 text and under 1 MiB.")
+            return None
+        except Exception as exc:
+            log.warning("Telegram PRD download failed: %s", type(exc).__name__)
+            await message.reply_text("Could not download the PRD from Telegram.")
+            return None
+    else:
+        parts = (message.text or message.caption or "").split(maxsplit=1)
+        url = parts[1].strip() if len(parts) > 1 else ""
+        allowed = {x.strip() for x in settings.github_allowed_repos.split(",") if x.strip()}
+        source = prd_service.parse_prd_file_url(url, allowed)
+        if source is None:
+            await message.reply_text("Attach a .md/.txt PRD or supply an allowlisted GitHub file URL after /prd.")
+            return None
+        owner, repo, branch, path = source
+        try:
+            text = await prd_service.fetch_github_text(owner, repo, branch, path, settings.github_token)
+        except Exception as exc:
+            log.warning("GitHub PRD fetch failed: %s", type(exc).__name__)
+            await message.reply_text("Could not fetch that allowlisted GitHub PRD file.")
+            return None
+        filename = path.rsplit("/", 1)[-1]
+        source_ref = f"github:{owner}/{repo}/{branch}/{path}"
+    with Session(engine) as s:
+        lead = _member(s, update)
+        if lead is None or lead.role != "lead":
+            await message.reply_text("Only a linked team lead can ingest a PRD. Send /join first if needed.")
+            return None
+        configured = channels.group_chat_id(s)
+        if configured and int(chat.id) != int(configured):
+            await message.reply_text("PRD ingestion is restricted to the configured project group.")
+            return None
+    return text, source_ref, filename, lead.id
+
+
+async def prd_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/prd <GitHub file URL> or reply to a Markdown/text file upload with /prd."""
+    source = await _prd_source(update, ctx)
+    if not source:
+        return
+    text, source_ref, filename, lead_id = source
+    from .. import prd as prd_service
+    with Session(engine) as s:
+        lead = s.get(Member, lead_id)
+        try:
+            result = await prd_service.ingest_async(s, lead, text, source_ref=source_ref, source_name=filename)
+        except (PermissionError, ValueError) as exc:
+            await update.effective_message.reply_text(str(exc))
+            return
+        except Exception:
+            log.exception("PRD ingestion failed")
+            await update.effective_message.reply_text("PRD analysis failed; no completion was reported.")
+            return
+        lines = [f"Created {escape(x['id'])}: <b>{escape(x['title'])}</b> → {escape(x['owner'])}"
+                 for x in result["created"]]
+        lines.extend(f"Needs your review: <b>{escape(x['title'])}</b> — {escape('; '.join(x['reasons']))}"
+                     for x in result["needs_review"])
+        await update.effective_message.reply_html(
+            "Already ingested; no duplicate tasks created." if result["duplicate"] else
+            ("\n".join(lines) if lines else "No high-confidence explicitly assigned tasks found. No tasks created."))
+        for row in result["created"]:
+            task = s.get(Task, row["id"])
+            owner = s.get(Member, task.owner_id) if task else None
+            if owner:
+                note = service.out(owner.id, f"📌 PRD assignment: <b>{escape(row['title'])}</b> (task {escape(row['id'])}).",
+                                   "system", row["id"])
+                await channels.deliver(s, [note])
+
+
+async def on_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    caption = (update.effective_message.caption or "").strip().split(maxsplit=1)
+    if caption and caption[0].split("@", 1)[0].casefold() == "/prd":
+        await prd_cmd(update, ctx)
+
+
+async def reviewpr_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Report allowlisted PR metadata, diffs and checks to Telegram; never write to GitHub."""
+    message = update.effective_message
+    with Session(engine) as s:
+        member = _member(s, update)
+        if member is None or member.role != "lead":
+            await message.reply_text("Only a linked team lead can request PR analysis.")
+            return
+        allowed = {x.strip() for x in settings.github_allowed_repos.split(",") if x.strip()}
+        url = ctx.args[0] if ctx.args else ""
+        try:
+            report = await github.review_pr(url, allowed, settings.github_token)
+        except ValueError as exc:
+            await message.reply_text(str(exc))
+            return
+        except Exception:
+            log.exception("GitHub PR analysis fetch failed")
+            await message.reply_text("Could not load that allowlisted PR (the repository may be private or inaccessible).")
+            return
+    lines = [f"<b>{escape(report['title'])}</b> · {escape(report['repository'])}#{report['number']}",
+             f"<a href=\"{escape(report['url'])}\">Open PR</a>",
+             f"{escape(str(report['head_branch']))} → {escape(str(report['base_branch']))} · {len(report['files'])} file(s)"]
+    checks = report.get("checks") or []
+    lines.append("Checks: " + (", ".join(f"{escape(str(c['name']))}: {escape(str(c['conclusion'] or c['status']))}"
+                                          for c in checks[:10]) or "none reported"))
+    lines.append("Read-only GitHub data only; no review, comments, or changes were submitted.")
+    await message.reply_html("\n".join(lines), disable_web_page_preview=True)
 
 
 async def setgroup_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

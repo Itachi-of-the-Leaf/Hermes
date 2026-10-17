@@ -93,6 +93,14 @@ Recall bots join as visible participants; tell people the agent is listening. St
 
 **No Recall key?** Upload the transcript Teams saves (meeting recap → Download transcript, `.vtt`).
 
+## PRD ingestion and GitHub pull-request analysis
+
+Set `GITHUB_ALLOWED_REPOS` to a comma-separated list of `owner/repo` values. Optionally set `GITHUB_READ_TOKEN` to a fine-grained GitHub token restricted to read-only Contents and Pull requests permissions; the bot never reuses a developer's local `gh` credentials. The same allowlist protects GitHub PRD file URLs and PR analysis. Private repositories require the read token; if GitHub denies access, no plan/report is produced.
+
+In the configured project Telegram group, a linked lead can reply to a `.md` or `.txt` attachment with `/prd`, or send `/prd https://github.com/<owner>/<repo>/blob/<branch>/<path>.md`. Telegram uploads are limited to 1 MiB UTF-8 text. GitHub PRDs are fetched through the GitHub Contents API; Git LFS pointer files are rejected. Extracted tasks are auto-created only when the model gives explicit supporting evidence, a high confidence score, and an unambiguous roster owner. Unassigned, duplicate, ambiguous, malformed, or cyclic work is held out and shown to the lead; the bot does not infer team skills or availability. Created tasks are sent to the existing linked channel for their owner.
+
+Use `/reviewpr https://github.com/<owner>/<repo>/pull/<number>` for a read-only report, or write an explicit request such as “review this PR <url>” in Telegram. The bot reads PR metadata, changed-file patches and checks, then reports in Telegram. It never posts a review/comment, approves, requests changes, merges, checks out or runs PR code. Reports summarize the retrieved context rather than claiming a full local code/test review; GitHub response and diff sizes are bounded.
+
 ## Jev
 
 1. Create a key at openrouter.ai/settings/keys → `OPENROUTER_API_KEY`. No TypeSafe waitlist.

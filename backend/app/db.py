@@ -15,6 +15,7 @@ from .models import (
     Meeting,
     Member,
     Message,
+    PRDIngestion,
     Review,
     Task,
     Utterance,
@@ -118,7 +119,7 @@ def reset_db() -> None:
     backup_database()
     with Session(engine) as s:
         keep = {m.key: {f: getattr(m, f) for f in IDENTITY_FIELDS} for m in s.exec(select(Member)).all()}
-        for model in (Utterance, Meeting, Appointment, Event, Review, Message, Correction, AgentAction, Forecast, Task, Member):
+        for model in (Utterance, Meeting, PRDIngestion, Appointment, Event, Review, Message, Correction, AgentAction, Forecast, Task, Member):
             s.exec(delete(model))
         s.commit()
         seed(s, keep)
